@@ -5,6 +5,10 @@
 {-# HLINT ignore "Fuse foldr/map" #-}
 {-# HLINT ignore "Use first" #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# LANGUAGE LambdaCase #-}
+{-# HLINT ignore "Use if" #-}
 
 module Part5Onwards () where 
 
@@ -19,7 +23,7 @@ import Prelude hiding ((**))
 
 -- | Typeclass of enumerable values, with two functions 
 -- defined in terms of each other 
--- (user can define any Listable instance most convenience for them)
+-- (user can define any Listable instance most convenient for them)
 class Listable a where 
   -- | `tiers` is a possibly infinite list of finite sublists, 
   -- characterized by some notion of size. Each sublist represents a *tier*. 
@@ -206,4 +210,140 @@ instance (Listable n, Num n, Ord n) => Listable (NonNeg n) where
     where 
       nonNegOk (NonNeg n) = n >= 0
 
+--------------------------------------------------------------------------------
+-- Part 7: Functions as Test Values
+--------------------------------------------------------------------------------
+-- Mutating functions
 
+-- | `mutate f ms` mutates the function `f` given a list `ms` of exception pairs
+mutate :: Eq a => (a -> b) -> [(a, b)] -> (a -> b)
+mutate f ms = foldr mut f ms 
+  where 
+    mut :: Eq a => (a, b) -> (a -> b) -> a -> b
+    mut (x', fx') g x = if x == x' then fx' else g x 
+
+--------------------------------------------------------------------------------
+-- Enumerating exceptions
+
+-- | Takes tiers of arguments and results, and returns tiers of 
+--   lists of pairs of arguments and results. For example:
+-- > exceptionPairs (tiers :: [[Word]]) (tiers :: [[Word]])
+-- > [ [[]]
+-- >  , [[(0,0)]]
+-- >  , [[(0,1)],[(1,0)]]
+-- >  , [[(0,2)],[(1,1)],[(0,0),(1,0)],[(2,0)]]
+-- >  , ... ]
+exceptionPairs :: [[a]] -> [[b]] -> [[ [(a, b)] ]]
+exceptionPairs xss yss = 
+  concatMapT (`excep` yss) (properSubsetsOf xss)
+    where 
+      excep :: [a] -> [[b]] -> [[ [(a, b)] ]]
+      excep xs sbs = zip xs `mapT` products (const sbs `map` xs)
+
+-- | Returns tiers of proper sublists from values from a given tier-list
+properSubsetsOf :: [[a]] -> [[ [a] ]]
+properSubsetsOf = init . setsOf 
+  where 
+    -- To define `properSubsetsOf`, we need a few helper functions 
+    -- (taken from the LeanCheck source code, not in the paper)
+    setsOf :: [[a]] -> [[[a]]]
+    setsOf = ([[]]:) . concatT . setChoicesWith (\x xss -> mapT (x:) (setsOf xss))
+
+    setChoicesWith :: (a -> [[a]] -> b) -> [[a]] -> [[b]]
+    setChoicesWith _ []  =  []
+    setChoicesWith _ [[]]  =  []
+    setChoicesWith f ([]:xss)
+      =  []
+      :  setChoicesWith (\y yss -> f y ([]: normalizeT yss)) xss
+    setChoicesWith f ((x:xs):xss)
+      =  [[f x (xs:xss)]]
+      \/ setChoicesWith f (xs:xss)
+      
+-- | Takes the product of N lists of tiers, producing lists of length N
+-- (from LeanCheck source code)
+products :: [ [[a]] ] -> [[ [a] ]]
+products  =  foldr (productWith (:)) [[[]]]
+
+-- | Take a tiered product of lists of tiers.
+-- (taken from LeanCheck source code)
+productWith :: (a -> b -> c) -> [[a]] -> [[b]] -> [[c]]
+productWith _ _ []  =  []
+productWith _ [] _  =  []
+productWith f (xs:xss) yss  =  map (xs **) yss
+                            \/ delay (productWith f xss yss)
+  where
+    xs ** ys  =  [x `f` y | x <- xs, y <- ys]
+
+-- | Normalizes tiers by removing up to 12 empty tiers from the end of a list
+--   of tiers. (taken from LeanCheck)
+--
+-- > normalizeT [xs0,xs1,...,xsN,[]]     =  [xs0,xs1,...,xsN]
+-- > normalizeT [xs0,xs1,...,xsN,[],[]]  =  [xs0,xs1,...,xsN]
+--
+-- The arbitrary limit of 12 tiers is necessary as this function would loop if
+-- there is an infinite trail of empty tiers.
+normalizeT :: [[a]] -> [[a]]
+normalizeT []  =  []
+normalizeT [[]]  =  []
+normalizeT [[],[]]  =  []
+normalizeT [[],[],[]]  =  []
+normalizeT [[],[],[],[]]  =  []
+normalizeT [[],[],[],[], []]  =  []
+normalizeT [[],[],[],[], [],[]]  =  []
+normalizeT [[],[],[],[], [],[],[]]  =  []
+normalizeT [[],[],[],[], [],[],[],[]]  =  []
+normalizeT [[],[],[],[], [],[],[],[], []]  =  []
+normalizeT [[],[],[],[], [],[],[],[], [],[]]  =  []
+normalizeT [[],[],[],[], [],[],[],[], [],[],[]]  =  []
+normalizeT [[],[],[],[], [],[],[],[], [],[],[],[]]  =  []
+normalizeT (xs:xss)  =  xs:normalizeT xss
+
+--------------------------------------------------------------------------------
+-- Enumerating functions
+
+-- | Takes tiers of arguments & tiers of results, returning tiers of functions
+( -->> ) :: Eq a => [[a]] -> [[b]] -> [[ a -> b ]]
+xss -->> yss = 
+  concatMapT 
+    (\(r, yss) -> mapT (const r `mutate`) (exceptionPairs xss yss))
+    (choices yss)
+
+-- | `Listable` instance of functions
+-- 1. Arguments should be instances of both `Eq` & `Listable`
+-- 2. Results should be instances of `Listable`
+instance (Eq a, Listable a, Listable b) => Listable (a -> b) where 
+  tiers :: [[ a -> b ]]
+  tiers = tiers -->> tiers 
+
+-- | Enumerated functions of type `Bool -> Bool` (Example 7.2)
+tiersBoolToBool :: [[Bool -> Bool]]
+tiersBoolToBool = 
+  [ [ const False, const True ],
+    [ \case False -> True; True -> False,
+      \case False -> False; True -> True,
+      \case False -> False; True -> True,
+      \case False -> True; True -> False ]
+  ]
+
+-- | Returns `tiers` of choices for result values
+-- Choices are pairs of values and tiers excluding that value.
+-- (taken from Leancheck source code)
+-- > choices [[False,True]] == [[(False,[[True]]),(True,[[False]])]]
+-- > choices [[1],[2],[3]]
+-- >   == [ [(1,[[],[2],[3]])]
+-- >      , [(2,[[1],[],[3]])]
+-- >      , [(3,[[1],[2],[]])] ]
+--
+-- Each choice is sized by the extracted element.
+choices :: [[a]] -> [[(a,[[a]])]]
+choices  =  choicesWith (,)
+
+-- | Like 'choices', but allows a custom function. (taken from LeanCheck)
+choicesWith :: (a -> [[a]] -> b) -> [[a]] -> [[b]]
+choicesWith _ []  =  []
+choicesWith _ [[]]  =  []
+choicesWith f ([]:xss)
+  =  [] : choicesWith (\y yss -> f y ([]:normalizeT yss)) xss
+choicesWith f ((x:xs):xss)
+  =  [[f x (xs:xss)]]
+  \/ choicesWith (\y (ys:yss) -> f y ((x:ys):yss)) (xs:xss)
