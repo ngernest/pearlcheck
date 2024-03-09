@@ -9,7 +9,7 @@ module Parts1To4 () where
 -- Part 1: Intro
 --------------------------------------------------------------------------------
 
--- | A faulty sort function
+-- | A faulty sorting function
 sort :: Ord a => [a] -> [a]
 sort [] = []
 sort (x:xs) = filter (< x) xs ++ [x] ++ filter (> x) xs
@@ -24,7 +24,7 @@ isSorted (x:y:xs) = x <= y && isSorted (y : xs)
 prop_sortOrdered :: Ord a => [a] -> Bool 
 prop_sortOrdered xs = isSorted (sort xs)
 
--- | @count x xs@ is the no. of times @x@ appears in @xs@
+-- | `count x xs` is the no. of times `x` appears in `xs`
 count :: Eq a => a -> [a] -> Int 
 count x xs = foldr (\y acc -> if x == y then acc + 1 else acc) 0 xs
 
@@ -37,7 +37,7 @@ prop_sortCount x xs = count x (sort xs) == count x xs
 --------------------------------------------------------------------------------
 
 -- | Listable types are those for which there is a declared 
--- | @list@ of all values of that type
+-- | `list` of all values of that type
 class Listable a where 
   list :: [a]
 
@@ -62,7 +62,7 @@ instance Listable Int where
 --------------------------------------------------------------------------------
 -- Pairs 
 
--- | @xs >< ys@ is the Cartesian product of xs and ys
+-- | `xs >< ys` is the Cartesian product of xs and ys
 -- (with modifications to handle infinite lists)
 ( >< ) :: [a] -> [b] -> [(a, b)]
 [] >< _ = []
@@ -79,15 +79,15 @@ instance (Listable a, Listable b) => Listable (a, b) where
 
 -- | Listable instance for lists
 instance Listable a => Listable [a] where 
-  -- Start with the empty list, 
-  -- then recursively list all lists of the form @x:xs@
+  -- | Start with the empty list, 
+  -- then recursively list all lists of the form `x:xs`
   list :: [[a]]
   list = [] : [ x:xs | (x, xs) <- list ]
 
 --------------------------------------------------------------------------------
 -- Searching for counter-examples
 
--- | @counterExamples0 n p@ lists @n@ counterexamples that fail the predicate @p@ 
+-- | `counterExamples0 n p` lists `n` counterexamples that fail the predicate `p` 
 counterExamples0 :: Listable a => Int -> (a -> Bool) -> [a]
 counterExamples0 n p = 
   [x | x <- take n list, not (p x)]
@@ -95,7 +95,7 @@ counterExamples0 n p =
 --------------------------------------------------------------------------------
 -- Showing test reuslts
 
--- | Reports whether a property @p@ is true out of @n@ test values
+-- | Reports whether a property `p` is true out of `n` test values
 checkFor0 :: (Show a, Listable a) => Int -> (a -> Bool) -> IO ()
 checkFor0 n p = 
   case counterExamples n p of 
@@ -112,15 +112,15 @@ check0 = checkFor0 200
 
 -- Shape shifting
 
--- | Returns a list of values obtained by applying a constructor @c@
+-- | Returns a list of values obtained by applying a constructor `c`
 cons1 :: Listable a => (a -> b) -> [b]
 cons1 c = [c x | x <- list]
 
--- | Like @cons1@, but for constructors with arity-2
+-- | Like `cons1`, but for constructors with arity-2
 cons2 :: (Listable a, Listable b) => (a -> b -> c) -> [c]
 cons2 c = [c x y | (x, y) <- list]
 
--- | Creates a singleton list containing the nullary onstructor @c@
+-- | Creates a singleton list containing the nullary onstructor `c`
 cons0 :: a -> [a]
 cons0 c = [c]
 
@@ -130,12 +130,12 @@ data Expr = Val Int
           | Add Expr Expr 
   deriving (Show, Eq)
 
--- | Listable instance for @Expr@s
+-- | Listable instance for `Expr`s
 instance Listable Expr where 
   list :: [Expr]
   list = cons1 Val \/ cons2 Add
 
--- | Evaluates an @Expr@ to an integer 
+-- | Evaluates an `Expr` to an integer 
 eval :: Expr -> Int 
 eval (Val i) = i 
 eval (Add e1 e2) = eval e1 + eval e2
@@ -146,10 +146,10 @@ eval (Add e1 e2) = eval e1 + eval e2
 
 -- | A typeclass of multi-argument properties
 class Testable a where 
-  -- | Takes a @Testable@ property and returns a list of @Result@s
+  -- | Takes a `Testable` property and returns a list of `Result`s
   results :: a -> [Result]
 
--- | A @Result@ is a list of string arguments & the result of testing the 
+-- | A `Result` is a list of string arguments & the result of testing the 
 -- property on those arguments
 type Result = ([String], Bool)  
 
@@ -165,15 +165,15 @@ instance Testable Bool where
 --------------------------------------------------------------------------------
 -- Testable functions 
 
-{- Testable instance for functions of type a -> b
+{- `Testable` instance for functions of type `a -> b`
 
-  1. The argument type @a@ must have @Show@ & @Listable@ instances defined,
+  1. The argument type `a` must have `Show` & `Listable` instances defined,
     so that we can print and generate arguments.
-  2. The return type @b@ must be @Testable@: note that @p x@ is the property @p@
-    specialized with the test value @x@
+  2. The return type `b` must be `Testable`: note that `p x` is the property `p`
+    specialized with the test value `x`
 
-  Since (->) is right associative, a -> (c -> Bool) == a -> c -> Bool,
-  and we can instantiate @b@ at a function type as long 
+  Since `->` is right associative, `a -> (c -> Bool) == a -> c -> Bool`,
+  and we can instantiate `b` at a function type as long 
   as the final return type is Bool. 
 -} 
 instance (Show a, Listable a, Testable b) => Testable (a -> b) where 
@@ -184,14 +184,14 @@ instance (Show a, Listable a, Testable b) => Testable (a -> b) where
       resultsFor x = [(show x : as, r) | (as, r) <- results (p x)]
 
 --------------------------------------------------------------------------------
--- Finding counterexamples for @Testable@ values
+-- Finding counterexamples for `Testable` values
 
--- | @counterExamples n p@ lists @n@ counterexamples that fail the 
--- @Testable@ property @p@ 
+-- | `counterExamples n p` lists `n` counterexamples that fail the 
+-- `Testable` property `p` 
 counterExamples :: Testable a => Int -> a -> [[String]]
 counterExamples n p = [ as | (as, False) <- take n (results p) ]
 
--- | Reports whether a @Testable@ property @p@ is true out of @n@ test values
+-- | Reports whether a `Testable` property `p` is true out of `n` test values
 checkFor :: Testable a => Int -> a -> IO ()
 checkFor n p = 
   case counterExamples n p of 
