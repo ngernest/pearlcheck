@@ -217,12 +217,13 @@ instance (Listable n, Num n, Ord n) => Listable (NonNeg n) where
 --------------------------------------------------------------------------------
 -- Mutating functions
 
--- | `mutate f ms` mutates the function `f` given a list `ms` of exception pairs
+-- | `mutate f ms` mutates the function `f` given a list `ms` of mutants 
+-- (exception pairs)
 mutate :: Eq a => (a -> b) -> [(a, b)] -> (a -> b)
 mutate f ms = foldr mut f ms 
   where 
     mut :: Eq a => (a, b) -> (a -> b) -> a -> b
-    mut (x', fx') g x = if x == x' then fx' else g x 
+    mut (x', fx') f x = if x == x' then fx' else f x 
 
 --------------------------------------------------------------------------------
 -- Enumerating exceptions
@@ -320,7 +321,8 @@ instance (Eq a, Listable a, Listable b) => Listable (a -> b) where
 -- | Enumerated functions of type `Bool -> Bool` (Example 7.2)
 tiersBoolToBool :: [[Bool -> Bool]]
 tiersBoolToBool = 
-  [ [ const False, const True ],
+  [ [ const False, 
+      const True ],
     [ \case False -> True; True -> False,
       \case False -> False; True -> True,
       \case False -> False; True -> True,
