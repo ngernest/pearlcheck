@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Part5Onwards
+      PartialFunctions
       Parts1To4
   other-modules:
       Paths_pearlcheck

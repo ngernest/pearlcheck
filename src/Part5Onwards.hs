@@ -10,11 +10,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# HLINT ignore "Use if" #-}
 
+
 module Part5Onwards () where 
 
 import Parts1To4 (Expr (..), check)
 
 import Prelude hiding ((**))
+
 
 --------------------------------------------------------------------------------
 -- Part 5: Fair Enumeration
@@ -347,3 +349,13 @@ choicesWith f ([]:xss)
 choicesWith f ((x:xs):xss)
   =  [[f x (xs:xss)]]
   \/ choicesWith (\y (ys:yss) -> f y ((x:ys):yss)) (xs:xss)
+
+--------------------------------------------------------------------------------
+-- Part 8: LeanCheck
+--------------------------------------------------------------------------------  
+-- 8.1 Existential properties
+
+-- | Checks if there `exists` an assignemnt of values that satisfy a property 
+-- up to `n` values
+exists :: Testable a => Int -> a -> Bool 
+exists n = or . take n . map snd . results 
