@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 
-module Parts1To4 where
+module Parts1To4 (Expr (..), check) where
 
 --------------------------------------------------------------------------------
 -- Part 1: Intro
