@@ -2,6 +2,8 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
+{-# HLINT ignore "Fuse foldr/map" #-}
+{-# HLINT ignore "Use first" #-}
 
 module Part5Onwards () where 
 
@@ -115,5 +117,43 @@ instance (Listable a, Listable b, Listable c) => Listable (a, b, c) where
 instance Listable Int where 
   list :: [Int]
   list = [0, -1..] `interleave` [1..]
+
+--------------------------------------------------------------------------------
+-- 5.4 `Testable` typeclass: tiers of tests
+
+-- | A `Result` is a list of arguments & a boolean test result for those args
+type Result = ([String], Bool)
+
+-- | Typeclass of Testable properties
+class Testable a where 
+  -- | Given a `Testable` property, `resultiers` returns tiers of results 
+  resultiers :: a -> [[Result]]
+
+-- Returns a list of `results` by concatenating all the tiered results
+results :: Testable a => a -> [Result]
+results = concat . resultiers
+
+-- | `Testable` instance for bools
+instance Testable Bool where 
+  resultiers :: Bool -> [[Result]]
+  resultiers p = [[([], p)]]
+
+-- | `Testable` instance for functions
+instance (Show a, Listable a, Testable b) => Testable (a -> b) where 
+  resultiers :: (a -> b) -> [[Result]]
+  resultiers p = concatMapT resultiersFor tiers 
+    where 
+      resultiersFor x = (\(as, r) -> (show x : as, r)) `mapT` resultiers (p x)  
+
+-- | Tiered equivalent of `concat`
+concatT :: [[ [[a]] ]] -> [[a]]
+concatT = foldr (\+:/) [] . map (foldr (\/) [])
+  where 
+    ( \+:/ ) :: [[a]] -> [[a]] -> [[a]]
+    xss \+:/ yss = xss \/ delay yss
+
+-- | Tiered equivalent of `concatMap`
+concatMapT :: (a -> [[b]]) -> [[a]] -> [[b]]
+concatMapT f = concatT . mapT f
 
 --------------------------------------------------------------------------------
