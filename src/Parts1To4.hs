@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 
-module Lib () where
+module Parts1To4 () where
 
 --------------------------------------------------------------------------------
 -- Part 1: Intro
@@ -201,5 +201,3 @@ checkFor n p =
 -- | Checks whether a property is true out of 200 test values
 check :: Testable a => a -> IO ()
 check = checkFor 200
-
---------------------------------------------------------------------------------
