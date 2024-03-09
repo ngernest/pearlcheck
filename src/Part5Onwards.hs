@@ -4,12 +4,15 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# HLINT ignore "Fuse foldr/map" #-}
 {-# HLINT ignore "Use first" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Part5Onwards () where 
 
+import Parts1To4 (Expr (..), check)
+
 import Prelude hiding ((**))
 
----------------------------------------------------s-----------------------------
+--------------------------------------------------------------------------------
 -- Part 5: Fair Enumeration
 --------------------------------------------------------------------------------
 -- 5.1 Tiered enumeration
@@ -157,3 +160,50 @@ concatMapT :: (a -> [[b]]) -> [[a]] -> [[b]]
 concatMapT f = concatT . mapT f
 
 --------------------------------------------------------------------------------
+-- 5.5 Finding counter-examples & reporting test results 
+
+-- Example 5.1
+rotateL :: Expr -> Expr
+rotateL (Add e1 (Add e2 e3)) = Add (Add e1 e2) e3
+
+rotateR :: Expr -> Expr
+rotateR (Add (Add e1 e2) e3) = Add e1 (Add e3 e2)
+
+prop_rotRotId :: Expr -> Expr -> Expr -> Bool
+prop_rotRotId e1 e2 e3 = rotateR (rotateL e) == e
+  where 
+    e = Add e1 (Add e2 e3)
+
+-- > *** failed for: (Val 0) (Val 0) (Val 1)
+test1 :: IO ()
+test1 = check prop_rotRotId
+
+--------------------------------------------------------------------------------
+-- Part 6: Conditional Properties & Data Invariants
+--------------------------------------------------------------------------------
+
+-- | The logical implication operator 
+( ==> ) :: Bool -> Bool -> Bool
+False ==> _ = True 
+True  ==> p = p 
+infixr 0 ==>
+
+-- | Tiered version of `filter`
+filterT :: (a -> Bool) -> [[a]] -> [[a]]
+filterT = map . filter
+
+-- | Flipped version of `filterT`
+suchThat :: [[a]] -> (a -> Bool) -> [[a]]
+suchThat = flip filterT
+
+-- | A datatype of non-negative numbers
+newtype NonNeg n = NonNeg n 
+
+-- | `Listable` instance for non-negative numbers
+instance (Listable n, Num n, Ord n) => Listable (NonNeg n) where 
+  tiers :: [[NonNeg n]]
+  tiers = cons1 NonNeg `suchThat` nonNegOk 
+    where 
+      nonNegOk (NonNeg n) = n >= 0
+
+
