@@ -8,6 +8,10 @@ import Data.List (intercalate)
 import Control.Monad (mplus)
 import Data.Maybe (fromMaybe)
 
+--------------------------------------------------------------------------------
+-- 4: A datatype for partial functions
+--------------------------------------------------------------------------------
+
 -- | A GADT for partial functions of type `a -> c`
 data a :-> c where
   -- | Constant function of type `() -> c`
@@ -84,5 +88,24 @@ apply c p = fromMaybe c . papply p
 
 
 -- | A shrinker for functions that uses the auxiliary shrinker `shr :: c -> [c]`
--- shrinkFun :: (c -> [c]) -> (a :-> c) -> [a :-> c]
+shrinkFun :: (c -> [c]) -> (a :-> c) -> [a :-> c]
+shrinkFun shr (Unit c) = 
+  [Nil] ++ [Unit c' | c' <- shr c]
+shrinkFun shr (Pair p) =
+  [ Pair p’ | p’ <- shrinkFun (shrinkFun shr) p ]
+shrinkFun shr (Lft p) =
+  [ Lft p’ | p’ <- shrinkFun shr p ]
+shrinkFun shr (Rgt q) =
+  [ Rgt q’ | q’ <- shrinkFun shr q ]
+shrinkFun shr (p :+: q) = 
+  [(p, q)] ++ 
+  [ p :+: q' | q' <- shrinkFun shr q ] ++ 
+  [ p' :+: q | p' <- shrinkFun shr p ]
+shrinkFun shr Nil = []
+shrinkFun shr (Map g h p) =
+  [ Map g h p’ | p’ <- shrinkFun shr p ]
 
+
+--------------------------------------------------------------------------------
+-- 5: Building partial functions
+--------------------------------------------------------------------------------
