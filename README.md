@@ -13,7 +13,7 @@ To compile, run `stack build`. This repo has been tested with GHC 9.2.5.
 (Some function names have been lightly modified to avoid re-defining 
 the same function twice.)
 
-## A note about generating random functions
+### A note about generating random functions
 
 To generate & show functions, the code from Koen Claessen's [*Shrinking and Showing Functions*](https://dl.acm.org/doi/10.1145/2430532.2364516)
 functional pearl (Haskell '12) is currently being reproduced in [`PartialFunctions.hs`](src/PartialFunctions.hs). (Work in progress)
