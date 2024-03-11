@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+-- {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 
@@ -37,17 +37,20 @@ data a :-> c where
 
   -- | Takes `g, h` such that `h . g == id`, and uses them two convert 
   -- between a new type `c` and an already supported type
-  Map :: (a -> b) -> (b -> a)
-                      -> (b :-> c) -> (a :-> c)
+  Map :: (a -> b) -> (b -> a) -> (b :-> c) -> (a :-> c)
 
--- | Functor instance for `a :->`
+-- | Functor instance for `a :->` (not in paper but needed for code to compile)
 instance Functor ((:->) a) where
+  -- Taken from QuickCheck source code 
   fmap :: (a2 -> b) -> (a1 :-> a2) -> a1 :-> b
   fmap f (Pair p)    = Pair (fmap (fmap f) p)
-  fmap f (p:+:q)     = fmap f p :+: fmap f q
+  fmap f (p :+: q)     = fmap f p :+: fmap f q
   fmap f (Unit c)    = Unit (f c)
   fmap _ Nil         = Nil
-  fmap f (Map g h p) = Map g h (fmap f p)                      
+  fmap f (Map g h p) = Map g h (fmap f p)    
+  -- Not in QC source code
+  fmap f (Lft g) = undefined 
+  fmap f (Rgt h) = undefined                  
 
 -- | Converts a partial function to a table of entries
 table :: (a :-> c) -> [(a, c)]
