@@ -324,9 +324,7 @@ tiersBoolToBool =
   [ [ const False, 
       const True ],
     [ \case False -> True; True -> False,
-      \case False -> False; True -> True,
-      \case False -> False; True -> True,
-      \case False -> True; True -> False ]
+      \case False -> False; True -> True ]
   ]
 
 -- | Returns `tiers` of choices for result values

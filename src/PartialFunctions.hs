@@ -2,7 +2,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
--- {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 
@@ -49,8 +48,8 @@ instance Functor ((:->) a) where
   fmap _ Nil         = Nil
   fmap f (Map g h p) = Map g h (fmap f p)    
   -- Not in QC source code
-  fmap f (Lft g) = undefined 
-  fmap f (Rgt h) = undefined                  
+  fmap _ (Lft _) = undefined 
+  fmap _ (Rgt _) = undefined                  
 
 -- | Converts a partial function to a table of entries
 table :: (a :-> c) -> [(a, c)]
