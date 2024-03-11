@@ -120,7 +120,7 @@ cons1 c = [c x | x <- list]
 cons2 :: (Listable a, Listable b) => (a -> b -> c) -> [c]
 cons2 c = [c x y | (x, y) <- list]
 
--- | Creates a singleton list containing the nullary onstructor `c`
+-- | Creates a singleton list containing the nullary constructor `c`
 cons0 :: a -> [a]
 cons0 c = [c]
 

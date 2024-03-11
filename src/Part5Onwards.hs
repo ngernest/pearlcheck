@@ -59,7 +59,7 @@ xss \/ [] = xss
 -- | Same as the old version of ( \/ ) in Parts1To4.hs
 interleave :: [a] -> [a] -> [a]
 [] `interleave` ys = ys 
-(x:xs) `interleave` ys = x : (ys `interleave `xs)
+(x:xs) `interleave` ys = x : (ys `interleave` xs)
 
 -- | Product of two tier-lists
 -- In the 3rd case, as we peel-off one tier to extract `xss`, we need to 

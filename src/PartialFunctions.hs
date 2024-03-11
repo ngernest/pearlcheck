@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module PartialFunctions () where 
+module PartialFunctions () where
 
 import Data.List (intercalate)
 import Control.Monad (mplus)
@@ -16,43 +16,43 @@ import Data.Maybe (fromMaybe)
 data a :-> c where
   -- | Constant function of type `() -> c`
   Unit :: c -> (() :-> c)
-  
+
   -- | Uncurries a partial function 
-  Pair :: (a :-> (b :-> c)) -> ((a,b) :-> c) 
-  
+  Pair :: (a :-> (b :-> c)) -> ((a,b) :-> c)
+
   -- | Construct partial functions from sums 
   -- (yielding a result if their argument uses `Left` or `Right` respectively)
   Lft :: (a :-> c) -> (Either a b :-> c)
-  Rgt :: (b :-> c) -> (Either a b :-> c) 
-  
+  Rgt :: (b :-> c) -> (Either a b :-> c)
+
   -- | Glues together two disjoint partial functions
-  (:+:) :: (a :-> c) -> (a :-> c) -> (a :-> c) 
-  
+  (:+:) :: (a :-> c) -> (a :-> c) -> (a :-> c)
+
   -- | Never returns anything
   Nil :: a :-> c
 
   -- | Takes `g, h` such that `h . g == id`, and uses them two convert 
   -- between a new type `c` and an already supported type
   Map :: (a -> b) -> (b -> a)
-                      -> (b :-> c) -> (a :-> c)  
+                      -> (b :-> c) -> (a :-> c)
 
 -- | Converts a partial function to a table of entries
-table :: (a :-> c) -> [(a, c)]                      
+table :: (a :-> c) -> [(a, c)]
 table (Unit c) = [((), c)]
-table (Pair p) = [((x, y), c) | (x, q) <- table p, 
+table (Pair p) = [((x, y), c) | (x, q) <- table p,
                                 (y, c) <- table q]
-table (Lft p) = [(Left x, c) | (x, c) <- table p]                                
+table (Lft p) = [(Left x, c) | (x, c) <- table p]
 table (Rgt q) = [(Right y, c) | (y, c) <- table q]
-table (p :+: q) = table p ++ table q 
+table (p :+: q) = table p ++ table q
 table Nil = []
 table (Map _ h p) = [(h x, c) | (x, c) <- table p]
 
 -- | `display d xys` pretty-prints a function table `xys`, along with a default 
 -- result `d` (since all functions displayed to the user must be total) 
-display :: (Show a, Show c) => c -> [(a, c)] -> String 
-display d xys = "{" ++ 
+display :: (Show a, Show c) => c -> [(a, c)] -> String
+display d xys = "{" ++
   intercalate "," (
-    [show x ++ " -> " ++ show y | (x, y) <- xys ] 
+    [show x ++ " -> " ++ show y | (x, y) <- xys ]
       ++ ["_ -> " ++ show d]
   ) ++ "}"
 
@@ -60,16 +60,16 @@ display d xys = "{" ++
 papply :: (a :-> c) -> (a -> Maybe c)
 
 -- Always respond the result `c`
-papply (Unit c) _ = Just c 
+papply (Unit c) _ = Just c
 
 -- Lookup `x` in the argument function `p`, and if it exists, lookup `y` in the 
 -- resultant function
-papply (Pair p) (a, b) = do 
-  q <- papply p a 
+papply (Pair p) (a, b) = do
+  q <- papply p a
   papply q b
 
 -- `Lft` & `Rgt succeed only when their arguments are `Left` & `Right`
-papply (Lft p) (Left a) = papply p a 
+papply (Lft p) (Left a) = papply p a
 papply (Rgt q) (Right b) = papply q b
 
 -- First try `p`, then try `q`
@@ -89,23 +89,24 @@ apply c p = fromMaybe c . papply p
 
 -- | A shrinker for functions that uses the auxiliary shrinker `shr :: c -> [c]`
 shrinkFun :: (c -> [c]) -> (a :-> c) -> [a :-> c]
-shrinkFun shr (Unit c) = 
-  [Nil] ++ [Unit c' | c' <- shr c]
+shrinkFun shr (Unit c) =
+  Nil : [Unit c' | c' <- shr c]
 shrinkFun shr (Pair p) =
-  [ Pair p’ | p’ <- shrinkFun (shrinkFun shr) p ]
+  [ Pair p' | p' <- shrinkFun (shrinkFun shr) p ]
 shrinkFun shr (Lft p) =
-  [ Lft p’ | p’ <- shrinkFun shr p ]
+  [ Lft p' | p' <- shrinkFun shr p ]
 shrinkFun shr (Rgt q) =
-  [ Rgt q’ | q’ <- shrinkFun shr q ]
-shrinkFun shr (p :+: q) = 
-  [(p, q)] ++ 
-  [ p :+: q' | q' <- shrinkFun shr q ] ++ 
+  [ Rgt q' | q' <- shrinkFun shr q ]
+shrinkFun shr (p :+: q) =
+  [p, q] ++
+  [ p :+: q' | q' <- shrinkFun shr q ] ++
   [ p' :+: q | p' <- shrinkFun shr p ]
-shrinkFun shr Nil = []
+shrinkFun _ Nil = []
 shrinkFun shr (Map g h p) =
-  [ Map g h p’ | p’ <- shrinkFun shr p ]
+  [ Map g h p' | p' <- shrinkFun shr p ]
 
 
 --------------------------------------------------------------------------------
 -- 5: Building partial functions
 --------------------------------------------------------------------------------
+
