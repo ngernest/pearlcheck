@@ -1,6 +1,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 
 module PartialFunctions () where
 
@@ -35,6 +39,15 @@ data a :-> c where
   -- between a new type `c` and an already supported type
   Map :: (a -> b) -> (b -> a)
                       -> (b :-> c) -> (a :-> c)
+
+-- | Functor instance for `a :->`
+instance Functor ((:->) a) where
+  fmap :: (a2 -> b) -> (a1 :-> a2) -> a1 :-> b
+  fmap f (Pair p)    = Pair (fmap (fmap f) p)
+  fmap f (p:+:q)     = fmap f p :+: fmap f q
+  fmap f (Unit c)    = Unit (f c)
+  fmap _ Nil         = Nil
+  fmap f (Map g h p) = Map g h (fmap f p)                      
 
 -- | Converts a partial function to a table of entries
 table :: (a :-> c) -> [(a, c)]
@@ -105,8 +118,92 @@ shrinkFun _ Nil = []
 shrinkFun shr (Map g h p) =
   [ Map g h p' | p' <- shrinkFun shr p ]
 
-
 --------------------------------------------------------------------------------
 -- 5: Building partial functions
 --------------------------------------------------------------------------------
 
+-- | Typeclass for argument types `a` for which it is possible to take a regular
+-- function of type `a -> c` and represent it as a partial function `a :-> c`
+class Argument a where 
+  build :: (a -> c) -> (a :-> c)
+
+instance Argument () where 
+  build :: (() -> c) -> () :-> c
+  build f = Unit $ f ()
+
+instance (Argument a, Argument b) => Argument (a, b) where 
+  -- | To convert `f` into a partial function, curry `f`, 
+  -- build a partial function, and build partial functions for 
+  -- all results of the resultant function
+  build :: ((a, b) -> c) -> (a, b) :-> c
+  build f = Pair $ build `fmap` build (curry f)  
+
+instance (Argument a, Argument b) => Argument (Either a b) where 
+  -- | Build two partial functions, one for Left & one for Right, 
+  -- then glue them together using `:+:`
+  build :: (Either a b -> c) -> Either a b :-> c
+  build f = Lft (build (f . Left)) :+: Rgt (build (f . Right))  
+
+
+-- | Turns a function `f :: a -> c` into a partial function `a :-> c`,
+-- as long as we have functions `g` & `h` which allow us to go 
+-- from `a` to `b` and back
+buildMap :: Argument b => (a -> b) -> (b -> a) -> (a -> c) -> (a :-> c)
+buildMap g h f = Map g h (build (f . h))
+
+-- Figure 8: build function for bools
+instance Argument Bool where 
+  -- Bool is isomorphic to `Either () ()`
+  build :: (Bool -> c) -> Bool :-> c
+  build = buildMap from to 
+    where 
+      from :: Bool -> Either () ()
+      from False = Left ()
+      from True  = Right ()
+
+      to :: Either () () -> Bool 
+      to (Left _) = False 
+      to (Right _) = True
+
+-- Figure 8: build function for lists
+instance Argument a => Argument [a] where 
+  -- `[a]` is isormophic to `Either () (a, [a])`
+  build :: ([a] -> c) -> [a] :-> c
+  build = buildMap from to 
+    where
+      from :: [a] -> Either () (a, [a]) 
+      from [] = Left ()
+      from (x:xs) = Right (x, xs)
+
+      to :: Either () (a, [a]) -> [a]
+      to (Left _) = [] 
+      to (Right (x, xs)) = x:xs
+
+-- Figure 9: build function for integers
+instance Argument Int where 
+  -- Use  two's complement to go from `Int` to `Either (Bool, Int) Int` & back
+  build :: (Int -> c) -> Int :-> c
+  build = buildMap from to 
+    where 
+      from :: Int -> Either (Bool, Int) Bool
+      from 0 = Right False 
+      from (-1) = Right True 
+      from x = Left (odd x, x `div` 2)
+
+      to :: Either (Bool, Int) Bool -> Int
+      to (Right False) = 0
+      to (Right True) = -1 
+      to (Left (b, x)) = bit b + 2 * x
+      
+      -- Converts a `Bool` to a bit
+      bit :: Bool -> Int 
+      bit False = 0
+      bit True = 1
+
+-- | Provides a `build` function for any type with a `show` & `read` function
+-- buildShow :: (Show a, Read a) => (a -> c) -> (a :-> c)
+-- buildShow f = buildMap show read f
+
+--------------------------------------------------------------------------------
+-- 6: The Fun modifier (TODO)
+--------------------------------------------------------------------------------
