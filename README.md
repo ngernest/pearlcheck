@@ -1,7 +1,7 @@
 # PearlCheck
 
 This repo contains the code from [*A simple incremental development of a property-based testing tool*](http://jmct.cc/pearlcheck.pdf) 
-by Braquehais et al. (Haskell '17), a functional pearl demonstrating how Haskell's 
+(Braquehais et al. 2017), a functional pearl demonstrating how Haskell's 
 LeanCheck property-based testing library is implemented.
 
 The code is located in [`src`](src) :
